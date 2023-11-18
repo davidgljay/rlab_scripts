@@ -24,6 +24,61 @@ try:
 except HTTPError as e:
     print(f"Error connecting to Notion API: {e}")
 
+def notion_create_contact(row):
+    return notion.pages.create(
+        **{
+            "parent": {
+                "database_id": os.getenv('CONTACT_DATABASE_ID')
+            },
+            "properties": {
+                "Name": {
+                    "title": [
+                        {
+                            "text": {
+                                "content": row['name']
+                            }
+                        }
+                    ]
+                },
+                "Email": {
+                    "email":  row['email']
+                }
+            }
+        })
+
+def notion_update_contact(row, page_id):
+    if (isinstance(row['Phone - This will be used to send brief follow-up surveys after events you attend.'], str)):
+        print('Updating phone', row['Phone - This will be used to send brief follow-up surveys after events you attend.'])
+        notion.pages.update(
+                **{
+                    "page_id": page_id,
+                    "properties": {
+                        "Phone": {
+                            "phone_number": row['Phone - This will be used to send brief follow-up surveys after events you attend.'] 
+                 
+                        }
+                    }
+                }
+            )
+    if (isinstance(row['Location'], str)):
+        print('updating location')
+        notion.pages.update(
+                **{
+                    "page_id": page_id,
+                    "properties": {
+                        "Location": {
+                            "rich_text": [
+                                {
+                                    "text": {
+                                        "content": row['Location']
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            )
+
 # Update Notion Tables
 for index, row in df.iterrows():
     email = row['email']
@@ -41,45 +96,48 @@ for index, row in df.iterrows():
             }
         )
     ## TODO: Make contact record if nothing is found.
-    if contact_page:
+    if len(contact_page['results']) == 0:
+        print("Creating a contact record for", email)
+        contact_page_id= notion_create_contact(row)['id']
+    else:
         contact_page_id = contact_page['results'][0]['id']
-        print(contact_page_id)
+        print('Updating contact record for', email) 
+    notion_update_contact(row, contact_page_id)
+    print(contact_page_id)
 
-        # Find Invitation Page
-        invitation_page_results = notion.databases.query(
-                **{
-                    "database_id": os.getenv('INVITATION_DATABASE_ID'),
-                    "filter": {
-                        "property": "🤵🏽‍♀️ Contacts",
-                        "relation": {
-                            "contains": contact_page_id,
-                        },
+    # Find Invitation Page
+    invitation_page_results = notion.databases.query(
+            **{
+                "database_id": os.getenv('INVITATION_DATABASE_ID'),
+                "filter": {
+                    "property": "🤵🏽‍♀️ Contacts",
+                    "relation": {
+                        "contains": contact_page_id,
                     },
-                }
-            )
-        if invitation_page_results:
-            invitation_page_id = invitation_page_results['results'][0]['id']
-            print(invitation_page_id)
+                },
+            }
+        )
+    if invitation_page_results:
+        invitation_page_id = invitation_page_results['results'][0]['id']
+        print(invitation_page_id)
 
-            notion.pages.update(
-                **{
-                    "page_id": invitation_page_id,
-                    "properties": {
-                        "Status": {
-                            "status":  {
-                                "name": "Registered For Event"
-                            }
+        notion.pages.update(
+            **{
+                "page_id": invitation_page_id,
+                "properties": {
+                    "Status": {
+                        "status":  {
+                            "name": "Registered For Event"
                         }
                     }
                 }
-                )
+            }
+            )
 
-            # Update Status to "Registered"
-            print(f"Updated Status for {email} to Registered.")
-        else:
-            print(f"No Invitation found for {email}.")
+        # Update Status to "Registered"
+        print(f"Updated Status for {email} to Registered.")
     else:
-        print(f"No Contact found for {email}.")
+        print(f"No Invitation found for {email}.")
 
 # Save changes
 client.submit_transaction()
