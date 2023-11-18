@@ -21,6 +21,43 @@ try:
 except HTTPError as e:
     print(f"Error connecting to Notion API: {e}")
 
+def notion_find_or_create_org(row):
+    if isinstance(row['Affiliation'], str):
+        org_name = row['Affiliation']
+        org_results = notion.databases.query(
+            **{
+                "database_id": os.getenv('ORGANIZATION_DATABASE_ID'),
+                "filter": {
+                    "property": "Name",
+                    "rich_text": {
+                        "contains": org_name,
+                    },
+                },
+            }
+        )
+        if (len(org_results['results']) > 0):
+            return org_results['results'][0]['id']
+        new_org_results = notion.pages.create(
+            **{
+                "parent": {
+                    "database_id": os.getenv('ORGANIZATION_DATABASE_ID')
+                },
+                "properties": {
+                    "Name": {
+                        "title": [
+                            {
+                                "text": {
+                                    "content": org_name
+                                }
+                            }
+                        ]
+                    }
+                }
+            })
+        return new_org_results['id']
+    return None
+
+
 def notion_create_contact(row):
     return notion.pages.create(
         **{
@@ -43,7 +80,7 @@ def notion_create_contact(row):
             }
         })
 
-def notion_update_contact(row, page_id):
+def notion_update_contact(row, page_id, org_page_id):
     update_call = {"page_id": page_id, "properties": {}}
     if (isinstance(row['Phone - This will be used to send brief follow-up surveys after events you attend.'], str)):
         update_call['properties']['Phone'] = {"phone_number": row['Phone - This will be used to send brief follow-up surveys after events you attend.']}
@@ -57,6 +94,22 @@ def notion_update_contact(row, page_id):
                                 }
                             ]
                         }
+    if(isinstance(row['Role'], str)):
+        update_call['properties']['Title'] = {
+            "rich_text": [
+                {
+                    "text": {
+                        "content": row['Role']
+                    }
+                }
+            ]
+        }
+    if(org_page_id):
+        update_call['properties']['🛖 Organizations'] = {
+            "relation": [{
+                    "id": org_page_id
+                }]
+            }
     return notion.pages.update(**update_call)
 
 def notion_create_invitation(contact_page_id, event_page_id, status):
@@ -122,8 +175,9 @@ for index, row in df.iterrows():
         contact_page_id= notion_create_contact(row)['id']
     else:
         contact_page_id = contact_page['results'][0]['id']
-        print('Updating contact record for', email) 
-    notion_update_contact(row, contact_page_id)
+        print('Updating contact record for', email)
+    org_page_id = notion_find_or_create_org(row)
+    notion_update_contact(row, contact_page_id, org_page_id)
 
     # Find Invitation Page
     invitation_page_results = notion.databases.query(
