@@ -44,26 +44,11 @@ def notion_create_contact(row):
         })
 
 def notion_update_contact(row, page_id):
+    update_call = {"page_id": page_id, "properties": {}}
     if (isinstance(row['Phone - This will be used to send brief follow-up surveys after events you attend.'], str)):
-        print('Updating phone', row['Phone - This will be used to send brief follow-up surveys after events you attend.'])
-        notion.pages.update(
-                **{
-                    "page_id": page_id,
-                    "properties": {
-                        "Phone": {
-                            "phone_number": row['Phone - This will be used to send brief follow-up surveys after events you attend.'] 
-                 
-                        }
-                    }
-                }
-            )
+        update_call['properties']['Phone'] = {"phone_number": row['Phone - This will be used to send brief follow-up surveys after events you attend.']}
     if (isinstance(row['Location'], str)):
-        print('updating location')
-        notion.pages.update(
-                **{
-                    "page_id": page_id,
-                    "properties": {
-                        "Location": {
+        update_call['properties']['Location'] = {
                             "rich_text": [
                                 {
                                     "text": {
@@ -72,9 +57,7 @@ def notion_update_contact(row, page_id):
                                 }
                             ]
                         }
-                    }
-                }
-            )
+    return notion.pages.update(**update_call)
 
 def notion_create_invitation(contact_page_id, event_page_id, status):
     return notion.pages.create(
