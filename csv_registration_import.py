@@ -11,16 +11,12 @@ load_dotenv()
 # Read CSV
 csv_path = sys.argv[1]
 df = pd.read_csv(csv_path)
-event_id = None
+event_page_id = sys.argv[2]
+status="Registered For Event"
 
 # Connect to Notion
 try:
-    # Connect to Notion
     notion = Client(auth=os.getenv('NOTION_API_TOKEN'))
-    # contacts_table = client.get_collection_view(os.getenv('CONTACTS_DATABASE_ID'))
-    # invitations_table = client.get_collection_view(os.getenv('INVITATIONS_DATABASE_ID'))
-
-    # Your other code ...
 
 except HTTPError as e:
     print(f"Error connecting to Notion API: {e}")
@@ -80,6 +76,32 @@ def notion_update_contact(row, page_id):
                 }
             )
 
+def notion_create_invitation(contact_page_id, event_page_id, status):
+    return notion.pages.create(
+        **{
+            "parent": {
+                "database_id": os.getenv('INVITATION_DATABASE_ID')
+            },
+            "properties": {
+                "🤵🏽‍♀️ Contacts": {
+                    "relation":  [{
+                        "id": contact_page_id
+                    }]
+                },
+                "📅 Meeting Notes": {
+                    "relation": [{
+                        "id": event_page_id
+                    }]
+                },
+                "Status": {
+                    "status": {
+                        "name": "Registered For Event"
+                    }
+                }
+            }
+        })
+
+
 def notion_update_invitation(invitation_page_id):
     return notion.pages.update(
     **{
@@ -119,30 +141,35 @@ for index, row in df.iterrows():
         contact_page_id = contact_page['results'][0]['id']
         print('Updating contact record for', email) 
     notion_update_contact(row, contact_page_id)
-    print(contact_page_id)
 
     # Find Invitation Page
     invitation_page_results = notion.databases.query(
             **{
                 "database_id": os.getenv('INVITATION_DATABASE_ID'),
                 "filter": {
-                    "property": "🤵🏽‍♀️ Contacts",
-                    "relation": {
-                        "contains": contact_page_id,
-                    },
+                    "and": [
+                        {
+                            "property": "🤵🏽‍♀️ Contacts",
+                            "relation": {
+                                "contains": contact_page_id,
+                            },
+                        },
+                        {
+                            "property": "📅 Meeting Notes",
+                            "relation": {
+                                "contains": event_page_id,
+                            },
+                        },
+                    ]
                 },
             }
         )
-    if invitation_page_results:
+    if not invitation_page_results['results']:
+        notion_create_invitation(contact_page_id, event_page_id, status)
+    else:
         invitation_page_id = invitation_page_results['results'][0]['id']
-        print(invitation_page_id)
-        print(notion_update_invitation(invitation_id, contact_id))
+        update_invitation_result = notion_update_invitation(invitation_page_id)
 
 
         # Update Status to "Registered"
         print(f"Updated Status for {email} to Registered.")
-    else:
-        print(f"No Invitation found for {email}.")
-
-# Save changes
-client.submit_transaction()
