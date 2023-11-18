@@ -11,6 +11,7 @@ load_dotenv()
 # Read CSV
 csv_path = sys.argv[1]
 df = pd.read_csv(csv_path)
+event_id = None
 
 # Connect to Notion
 try:
@@ -79,6 +80,21 @@ def notion_update_contact(row, page_id):
                 }
             )
 
+def notion_update_invitation(invitation_page_id):
+    return notion.pages.update(
+    **{
+        "page_id": invitation_page_id,
+        "properties": {
+            "Status": {
+                "status":  {
+                    "name": "Registered For Event"
+                }
+            }
+        }
+    }
+    )
+
+
 # Update Notion Tables
 for index, row in df.iterrows():
     email = row['email']
@@ -120,19 +136,8 @@ for index, row in df.iterrows():
     if invitation_page_results:
         invitation_page_id = invitation_page_results['results'][0]['id']
         print(invitation_page_id)
+        print(notion_update_invitation(invitation_id, contact_id))
 
-        notion.pages.update(
-            **{
-                "page_id": invitation_page_id,
-                "properties": {
-                    "Status": {
-                        "status":  {
-                            "name": "Registered For Event"
-                        }
-                    }
-                }
-            }
-            )
 
         # Update Status to "Registered"
         print(f"Updated Status for {email} to Registered.")
