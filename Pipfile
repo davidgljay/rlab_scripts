@@ -13,3 +13,6 @@ requests = "*"
 
 [requires]
 python_version = "3.10"
+
+[scripts]
+csv_import = "python3 csv_registration_import.py"
