@@ -17,3 +17,22 @@ packages:
           environment: {}
           annotations: {}
           limits: {}
+    - name: emailer
+      shared: false
+      environment: {}
+      parameters: {}
+      annotations: {}
+      functions:
+        - name: send
+          binary: false
+          main: ""
+          runtime: nodejs:default
+          web: true
+          webSecure: false
+          parameters: {}
+          environment:
+              RESEND_API_KEY: ${RESEND_API_KEY}
+              TO_EMAIL: ${TO_EMAIL}
+              FROM_EMAIL: ${FROM_EMAIL}
+          annotations: {}
+          limits: {}
