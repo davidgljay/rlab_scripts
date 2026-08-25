@@ -36,3 +36,20 @@ packages:
               FROM_EMAIL: ${FROM_EMAIL}
           annotations: {}
           limits: {}
+        - name: submit
+          binary: false
+          main: ""
+          runtime: nodejs:default
+          web: true
+          webSecure: false
+          parameters: {}
+          environment:
+              RESEND_API_KEY: ${RESEND_API_KEY}
+              TO_EMAIL: ${TO_EMAIL}
+              FROM_EMAIL: ${FROM_EMAIL}
+              GOOGLE_SERVICE_ACCOUNT_EMAIL: ${GOOGLE_SERVICE_ACCOUNT_EMAIL}
+              GOOGLE_PRIVATE_KEY: ${GOOGLE_PRIVATE_KEY}
+              GOOGLE_SHEET_ID: ${GOOGLE_SHEET_ID}
+              GOOGLE_SHEET_RANGE: ${GOOGLE_SHEET_RANGE}
+          annotations: {}
+          limits: {}
